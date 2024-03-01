@@ -1,0 +1,38 @@
+pipeline {
+  agent any
+
+  stages {
+    stage('Build') {
+      steps {
+        script {
+          docker.build("your-ecr-repository/flask-app:${env.BUILD_ID}")
+        }
+      }
+    }
+
+    stage('Push to ECR') {
+      steps {
+        script {
+          docker.withRegistry('https://your-ecr-repository.dkr.ecr.your-region.amazonaws.com', 'ecr:your-ecr-credentials') {
+            docker.image("your-ecr-repository/flask-app:${env.BUILD_ID}").push()
+          }
+        }
+      }
+    }
+
+    stage('Deploy to EKS') {
+      steps {
+        script {
+          sh 'kubectl apply -f kubernetes/deployment.yaml'
+          sh 'kubectl apply -f kubernetes/service.yaml'
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo 'Pipeline completed successfully!'
+    }
+  }
+}
